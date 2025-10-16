@@ -1,6 +1,7 @@
 """Flask application factory."""
 
-from flask import Flask
+import asyncio
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
@@ -51,5 +52,51 @@ def create_app(config_name: str = "development") -> Flask:
     def index() -> dict[str, str]:
         """Health check endpoint."""
         return {"status": "ok", "message": "Virtual Startup API"}
+
+    @app.route("/api/init", methods=["POST"])
+    def initialize_agents() -> tuple[dict, int]:
+        """Initialize the agent system."""
+        from app.services import get_agent_service
+
+        agent_service = get_agent_service()
+
+        if agent_service.initialized:
+            return jsonify({"status": "already_initialized"}), 200
+
+        try:
+            # Initialize agent system (async)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            status = loop.run_until_complete(agent_service.initialize())
+            loop.close()
+
+            if "error" in status:
+                return jsonify(status), 500
+
+            return jsonify(
+                {
+                    "status": "initialized",
+                    "message": "Agent system initialized successfully",
+                    "agents": status,
+                }
+            ), 200
+
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
+
+    @app.route("/api/status", methods=["GET"])
+    def system_status() -> tuple[dict, int]:
+        """Get system status."""
+        from app.services import get_agent_service
+
+        agent_service = get_agent_service()
+
+        return jsonify(
+            {
+                "api": "running",
+                "agents_initialized": agent_service.initialized,
+                "database": "connected",
+            }
+        ), 200
 
     return app

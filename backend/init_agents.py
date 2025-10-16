@@ -1,4 +1,5 @@
 """Initialize core agents in the database."""
+
 from app import create_app, db
 from app.models import Agent
 
@@ -91,4 +92,3 @@ def init_core_agents() -> None:
 
 if __name__ == "__main__":
     init_core_agents()
-
