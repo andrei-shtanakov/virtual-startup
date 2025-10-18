@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ChatWindow } from "../chat";
 import { useChat } from "../../hooks";
-import { Agent } from "../../types/agent";
+import type { Agent } from "../../types/agent";
 
 interface AgentChatsProps {
   agents: Agent[];

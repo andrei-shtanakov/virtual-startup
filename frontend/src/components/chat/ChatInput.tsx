@@ -1,4 +1,4 @@
-import React, { useState, useRef, KeyboardEvent } from "react";
+import React, { useState, useRef, type KeyboardEvent } from "react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -115,4 +115,5 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 };
 
 export default ChatInput;
+
 

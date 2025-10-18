@@ -36,7 +36,15 @@ def create_app(config_name: str = "development") -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     CORS(app)
+
+    # Initialize Socket.IO first
     socketio.init_app(app)
+
+    # Then register socket handlers AFTER Socket.IO is initialized with the app
+    # This ensures the decorators have access to the fully configured socketio instance
+    from app.sockets import register_socketio_handlers
+
+    register_socketio_handlers()
 
     # Register blueprints
     from app.routes import agent_routes, workflow_routes, stats_routes
@@ -44,9 +52,6 @@ def create_app(config_name: str = "development") -> Flask:
     app.register_blueprint(agent_routes.bp)
     app.register_blueprint(workflow_routes.bp)
     app.register_blueprint(stats_routes.bp)
-
-    # Register socket handlers
-    from app.sockets import chat_socket  # noqa: F401
 
     @app.route("/")
     def index() -> dict[str, str]:

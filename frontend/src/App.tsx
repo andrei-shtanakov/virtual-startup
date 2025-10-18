@@ -11,6 +11,12 @@ function App() {
   // In the future, add proper routing with React Router
   const [currentPage, setCurrentPage] = React.useState<PageType>("dashboard");
 
+  const handleNavigate = (page: string) => {
+    if (page === "dashboard" || page === "demo" || page === "cli") {
+      setCurrentPage(page as PageType);
+    }
+  };
+
   return (
     <div className="App">
       {/* Simple navigation */}
@@ -48,7 +54,7 @@ function App() {
       </div>
 
       {/* Page content */}
-      {currentPage === "dashboard" && <Dashboard />}
+      {currentPage === "dashboard" && <Dashboard onNavigate={handleNavigate} />}
       {currentPage === "cli" && <CLI />}
       {currentPage === "demo" && <ChatDemo />}
     </div>

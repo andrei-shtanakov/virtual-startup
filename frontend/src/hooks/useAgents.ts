@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Agent } from "../types/agent";
+import type { Agent } from "../types/agent";
 
 interface UseAgentsReturn {
   agents: Agent[];

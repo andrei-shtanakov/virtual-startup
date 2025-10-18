@@ -1,4 +1,4 @@
-import React, { useState, useRef, KeyboardEvent } from "react";
+import React, { useState, useRef, type KeyboardEvent } from "react";
 
 interface TerminalInputProps {
   onSubmit: (command: string) => void;
@@ -79,4 +79,5 @@ export const TerminalInput: React.FC<TerminalInputProps> = ({
 };
 
 export default TerminalInput;
+
 

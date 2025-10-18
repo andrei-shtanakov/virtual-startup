@@ -1,5 +1,5 @@
 import React from "react";
-import { Agent } from "../../types/agent";
+import type { Agent } from "../../types/agent";
 import AgentList from "./AgentList";
 import WorkflowStatus from "./WorkflowStatus";
 

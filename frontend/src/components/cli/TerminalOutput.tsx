@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { TerminalLine } from "../../types/cli";
+import type { TerminalLine } from "../../types/cli";
 
 interface TerminalOutputProps {
   lines: TerminalLine[];

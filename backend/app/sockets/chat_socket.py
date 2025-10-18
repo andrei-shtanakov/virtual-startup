@@ -1,6 +1,8 @@
 """WebSocket event handlers for chat."""
 
 import asyncio
+from typing import Any, Awaitable
+
 from flask import request
 from flask_socketio import emit
 
@@ -8,10 +10,25 @@ from app import socketio
 from app.services import get_agent_service
 
 
+def _run_async(coro: Awaitable[dict[str, Any]]) -> dict[str, Any]:
+    """Execute coroutine inside a dedicated event loop.
+
+    This prevents event loop clashes when Flask-SocketIO is running with
+    threading or eventlet.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
+
 @socketio.on("connect")
 def handle_connect() -> None:
     """Handle client connection."""
-    print(f"Client connected: {request.sid}")
+    print(f"🔌 Client connected: {request.sid}")
     emit("connection_response", {"status": "connected"})
 
 
@@ -22,7 +39,7 @@ def handle_disconnect() -> None:
 
 
 @socketio.on("send_message")
-def handle_send_message(data: dict) -> None:
+def handle_send_message(data: dict[str, Any]) -> None:
     """Handle message from operator to agent.
 
     Args:
@@ -35,25 +52,16 @@ def handle_send_message(data: dict) -> None:
         emit("error", {"error": "agent_id and message required"})
         return
 
-    print(f"Received message for agent {agent_id}: {message}")
+    print(f"💬 Received message for agent {agent_id}: {message}")
 
     # Emit status that agent is processing
     emit("agent_status", {"agent_id": agent_id, "status": "busy"}, broadcast=True)
 
     try:
-        # Get agent service
         agent_service = get_agent_service()
-
-        # Process message with agent system (async)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
-            agent_service.send_message_to_agent(agent_id, message)
-        )
-        loop.close()
+        result = _run_async(agent_service.send_message_to_agent(agent_id, message))
 
         if result.get("success"):
-            # Emit response back to client
             emit(
                 "agent_response",
                 {
@@ -64,7 +72,6 @@ def handle_send_message(data: dict) -> None:
                 },
             )
 
-            # Emit status update
             emit(
                 "agent_status",
                 {"agent_id": agent_id, "status": result.get("status", "idle")},
@@ -78,17 +85,16 @@ def handle_send_message(data: dict) -> None:
                 broadcast=True,
             )
 
-    except RuntimeError as e:
-        # Agent system not initialized
-        emit("error", {"error": str(e), "hint": "Agent system not initialized"})
+    except RuntimeError as exc:
+        emit("error", {"error": str(exc), "hint": "Agent system not initialized"})
         emit("agent_status", {"agent_id": agent_id, "status": "error"}, broadcast=True)
-    except Exception as e:
-        emit("error", {"error": str(e), "agent_id": agent_id})
+    except Exception as exc:  # noqa: BLE001
+        emit("error", {"error": str(exc), "agent_id": agent_id})
         emit("agent_status", {"agent_id": agent_id, "status": "error"}, broadcast=True)
 
 
 @socketio.on("agent_status_request")
-def handle_agent_status_request(data: dict) -> None:
+def handle_agent_status_request(data: dict[str, Any]) -> None:
     """Handle agent status request.
 
     Args:
@@ -104,14 +110,14 @@ def handle_agent_status_request(data: dict) -> None:
         agent_service = get_agent_service()
         status = agent_service.get_agent_status(agent_id)
         emit("agent_status", status)
-    except RuntimeError as e:
-        emit("error", {"error": str(e)})
-    except Exception as e:
-        emit("error", {"error": str(e)})
+    except RuntimeError as exc:
+        emit("error", {"error": str(exc)})
+    except Exception as exc:  # noqa: BLE001
+        emit("error", {"error": str(exc)})
 
 
 @socketio.on("workflow_update")
-def handle_workflow_update(data: dict) -> None:
+def handle_workflow_update(data: dict[str, Any]) -> None:
     """Handle workflow update event.
 
     Args:
@@ -123,7 +129,6 @@ def handle_workflow_update(data: dict) -> None:
         emit("error", {"error": "workflow_id required"})
         return
 
-    # Broadcast workflow update to all clients
     emit(
         "workflow_status",
         {

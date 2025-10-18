@@ -173,3 +173,4 @@ class DriverAgent(BaseVirtualAgent):
                 if status == "completed":
                     workflow.completed_at = datetime.utcnow()
                 self.db_session.commit()
+

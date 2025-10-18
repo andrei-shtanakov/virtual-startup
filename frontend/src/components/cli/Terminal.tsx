@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { TerminalLine, Command } from "../../types/cli";
+import type { TerminalLine, Command } from "../../types/cli";
 import TerminalOutput from "./TerminalOutput";
 import TerminalInput from "./TerminalInput";
 import { useAgents } from "../../hooks";

@@ -178,3 +178,4 @@ def get_task_processor() -> TaskProcessor:
         _task_processor = TaskProcessor()
 
     return _task_processor
+

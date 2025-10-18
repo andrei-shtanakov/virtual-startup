@@ -169,3 +169,4 @@ class CreatorAgent(BaseVirtualAgent):
         self.log_message(
             content="Research cache cleared", sender=self.name, meta={"type": "system"}
         )
+

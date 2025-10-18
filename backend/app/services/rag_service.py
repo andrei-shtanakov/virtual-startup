@@ -259,3 +259,4 @@ def get_rag_service(
         )
 
     return _rag_service
+

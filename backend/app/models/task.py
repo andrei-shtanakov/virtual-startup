@@ -35,3 +35,4 @@ class Task(db.Model):
                 self.completed_at.isoformat() if self.completed_at else None
             ),
         }
+

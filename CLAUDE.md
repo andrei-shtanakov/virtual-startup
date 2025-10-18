@@ -210,14 +210,21 @@ VITE_API_URL=http://localhost:5000/api
 ### Running Both Servers
 
 ```bash
-# Terminal 1 - Backend
+# Terminal 1 - Backend (IMPORTANT: Use run.py for WebSocket support)
 cd backend
-uv run flask run --debug    # Runs on http://localhost:5000
+uv run python run.py       # Runs on http://localhost:5000
+                          # NOTE: Use run.py, NOT "flask run"!
 
-# Terminal 2 - Frontend
+# Terminal 2 - Initialize agents (one-time after backend starts)
+curl -X POST http://localhost:5000/api/init
+
+# Terminal 3 - Frontend
 cd frontend
-npm run dev                 # Runs on http://localhost:5173
+npm run dev                # Runs on http://localhost:5173
 ```
+
+**CRITICAL**: Always use `uv run python run.py` to start the backend, NOT `flask run`.
+The `run.py` file initializes Flask-SocketIO which is required for WebSocket chat functionality.
 
 ---
 
@@ -244,6 +251,30 @@ The context7 MCP server should be used to check library documentation and best p
 
 # For type checking
 "Use context7 to verify TypeScript type definitions for Axios"
+```
+
+## Using Playwright MCP Server
+
+The Playwright MCP server should be used to test and validate web UI behavior across browsers.
+
+### When to Use Playwright
+
+- Running automated end-to-end (E2E) UI tests
+- Verifying frontend workflows and user interactions
+- Capturing screenshots or tracing steps in web apps
+- Checking performance or network requests
+- Ensuring cross-browser compatibility
+
+### Examples
+```bash
+# Before merging frontend changes
+"Use Playwright to test login flow in Chromium and Firefox"
+
+# When debugging UI automation
+"Use Playwright to trace signup test failures"
+
+# For performance validation
+"Use Playwright to measure page load times under throttled network"
 ```
 
 ---

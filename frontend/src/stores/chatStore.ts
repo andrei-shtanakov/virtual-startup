@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Message } from "../types/agent";
+import type { Message } from "../types/agent";
 
 interface ChatState {
   // Messages grouped by agent ID

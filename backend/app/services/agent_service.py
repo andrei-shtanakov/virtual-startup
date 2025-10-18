@@ -233,3 +233,4 @@ def get_agent_service() -> AgentService:
         _agent_service = AgentService()
 
     return _agent_service
+

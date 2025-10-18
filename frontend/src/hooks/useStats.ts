@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SystemOverview } from "../types/stats";
+import type { SystemOverview } from "../types/stats";
 
 interface UseStatsReturn {
   stats: SystemOverview | null;

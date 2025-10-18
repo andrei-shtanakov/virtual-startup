@@ -197,3 +197,4 @@ class BaseVirtualAgent:
             "status": self.status,
             "description": self.description,
         }
+

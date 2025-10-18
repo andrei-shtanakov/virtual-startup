@@ -54,17 +54,34 @@ Driver Agent (CEO)
 
 ## 🚀 Quick Start
 
-**Get running in 5 minutes!** See [QUICKSTART.md](QUICKSTART.md) for detailed instructions.
+**Get running in under 2 minutes!**
 
-### TL;DR
+### Easy Way (Recommended)
+
+```bash
+# Install dependencies (first time only)
+cd backend && uv sync && cd ..
+cd frontend && npm install && cd ..
+
+# Start everything with one command!
+./start.sh        # macOS/Linux
+start.bat         # Windows
+```
+
+The launcher will:
+- ✅ Start the backend server (http://localhost:5000)
+- ✅ Auto-initialize the agent system
+- ✅ Start the frontend server (http://localhost:5173)
+
+Then open your browser to http://localhost:5173
+
+### Manual Way
 
 ```bash
 # Backend (Terminal 1)
 cd backend
 uv sync
-uv run flask db upgrade
-uv run python init_agents.py
-uv run python run.py
+uv run python run.py  # Agents auto-initialize on startup!
 
 # Frontend (Terminal 2)
 cd frontend
@@ -128,16 +145,30 @@ cp .env.example .env
 
 ## Running the Application
 
-### Start Backend
+### Option 1: Easy Launcher (Recommended)
+
+```bash
+./start.sh        # macOS/Linux
+start.bat         # Windows
+```
+
+This will automatically:
+- Start the backend on http://localhost:5000
+- Initialize the agent system
+- Start the frontend on http://localhost:5173
+
+### Option 2: Manual Start
+
+**Start Backend:**
 
 ```bash
 cd backend
 uv run python run.py
 ```
 
-The backend will start on `http://localhost:5000`
+The backend will start on `http://localhost:5000` and agents will auto-initialize.
 
-### Start Frontend
+**Start Frontend:**
 
 ```bash
 cd frontend
@@ -149,6 +180,10 @@ The frontend will start on `http://localhost:5173`
 ### Access the Application
 
 Open your browser and navigate to `http://localhost:5173`
+
+You'll see two main pages:
+- **Dashboard** - View agent status and system statistics
+- **Chat Demo** - Interact with agents in real-time
 
 ## Project Structure
 
@@ -188,10 +223,13 @@ virtual-startup/
 
 ### Web Interface
 
-1. Start both backend and frontend servers
+1. Start the servers using `./start.sh` (macOS/Linux) or `start.bat` (Windows)
 2. Open `http://localhost:5173` in your browser
-3. Interact with the three core agents through their chat windows
-4. Monitor system statistics in the dashboard
+3. **Dashboard** - View agent status, system statistics, and quick navigation
+4. **Chat Demo** - Interact with agents in real-time
+   - Select an agent (Driver, Creator, or Generator)
+   - Type your message and press Enter to send
+   - Watch agent responses appear in real-time
 
 ### CLI Interface
 
@@ -213,8 +251,8 @@ Navigate to the CLI tab in the web interface for terminal-style interaction:
 ```bash
 cd backend
 
-# Run development server
-uv run flask run --debug
+# Run development server (IMPORTANT: Use run.py for WebSocket support)
+uv run python run.py  # NOT "flask run"
 
 # Run tests
 uv run pytest
@@ -228,6 +266,8 @@ uv run ruff check .
 # Type checking
 pyrefly check
 ```
+
+**Note**: Always use `uv run python run.py` instead of `flask run` because the WebSocket functionality requires the SocketIO server initialization in `run.py`.
 
 ### Frontend Development
 
@@ -464,16 +504,9 @@ See [TODO.md](TODO.md) for detailed roadmap.
 
 ### 📄 Documentation
 
-- [PHASE1_COMPLETE.md](PHASE1_COMPLETE.md) - Phase 1 summary
-- [PHASE3_COMPLETE.md](PHASE3_COMPLETE.md) - Phase 3 summary (Agent System)
-- [PHASE4_COMPLETE.md](PHASE4_COMPLETE.md) - Phase 4 summary (API Integration)
-- [PHASE6_COMPLETE.md](PHASE6_COMPLETE.md) - Phase 6 summary (Chat Interface)
-- [PHASE7_COMPLETE.md](PHASE7_COMPLETE.md) - Phase 7 summary (Dashboard View)
-- [PHASE8_COMPLETE.md](PHASE8_COMPLETE.md) - Phase 8 summary (CLI Interface)
-- [PHASE9_COMPLETE.md](PHASE9_COMPLETE.md) - Phase 9 summary (Integration & Workflow)
-- [PHASE10_COMPLETE.md](PHASE10_COMPLETE.md) - Phase 10 summary (Testing)
-- [DEFERRED_FEATURES.md](DEFERRED_FEATURES.md) - Features deferred for future phases
-- [QUICKSTART.md](QUICKSTART.md) - Quick start guide
+- [TODO.md](TODO.md) - Single source of truth for roadmap and phase status
+- [DEFERRED_FEATURES.md](DEFERRED_FEATURES.md) - Deferred items and rationale
+- [QUICKSTART.md](QUICKSTART.md) - Run and test the app locally
 
 ## Contributing
 

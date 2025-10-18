@@ -1,5 +1,5 @@
 import React from "react";
-import { Message as MessageType } from "../../types/agent";
+import type { Message as MessageType } from "../../types/agent";
 
 interface MessageProps {
   message: MessageType;

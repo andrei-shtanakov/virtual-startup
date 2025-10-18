@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Socket } from "socket.io-client";
 import { socket } from "../services/socket";
-import { Message } from "../types/agent";
+import type { Message } from "../types/agent";
 
 interface UseChatProps {
   agentId: number;
@@ -129,8 +129,11 @@ export const useChat = ({ agentId, onStatusChange }: UseChatProps): UseChatRetur
     currentSocket.on("agent_status", handleAgentStatus);
     currentSocket.on("error", handleError);
 
-    // Connect if not already connected
-    if (!currentSocket.connected) {
+    // Check if already connected and update state
+    if (currentSocket.connected) {
+      setIsConnected(true);
+    } else {
+      // Connect if not already connected
       currentSocket.connect();
     }
 

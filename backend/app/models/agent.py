@@ -35,3 +35,4 @@ class Agent(db.Model):
             "config": self.config,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Workflow, Task, WorkflowStatus } from "../types/workflow";
+import type { Workflow, Task, WorkflowStatus } from "../types/workflow";
 
 interface WorkflowStore {
   workflows: Workflow[];
@@ -116,10 +116,11 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     const state = get();
     return {
       total: state.workflows.length,
-      active: state.workflows.filter((w) => w.status === "in_progress").length,
+      active: state.workflows.filter((w) => w.status === "active").length,
       completed: state.workflows.filter((w) => w.status === "completed").length,
       failed: state.workflows.filter((w) => w.status === "failed").length,
     };
   },
 }));
+
 

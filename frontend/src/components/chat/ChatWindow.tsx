@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Message as MessageType } from "../../types/agent";
+import type { Message as MessageType } from "../../types/agent";
 import Message from "./Message";
 import ChatInput from "./ChatInput";
 

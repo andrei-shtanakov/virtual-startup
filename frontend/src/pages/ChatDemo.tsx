@@ -5,11 +5,19 @@ import { useChat } from "../hooks";
 /**
  * ChatDemo page - Test the chat interface with a single agent
  */
+type AgentType = "driver" | "creator" | "generator";
+
+interface AvailableAgent {
+  id: number;
+  name: string;
+  type: AgentType;
+}
+
 export const ChatDemo: React.FC = () => {
-  const [selectedAgent, setSelectedAgent] = useState({
+  const [selectedAgent, setSelectedAgent] = useState<AvailableAgent>({
     id: 1,
     name: "Driver",
-    type: "driver" as const,
+    type: "driver",
   });
 
   const [agentStatus, setAgentStatus] = useState<"idle" | "working" | "waiting">("idle");
@@ -20,10 +28,10 @@ export const ChatDemo: React.FC = () => {
   });
 
   // Mock agents for selector
-  const availableAgents = [
-    { id: 1, name: "Driver (CEO)", type: "driver" as const },
-    { id: 2, name: "Creator (Researcher)", type: "creator" as const },
-    { id: 3, name: "Generator (HR)", type: "generator" as const },
+  const availableAgents: AvailableAgent[] = [
+    { id: 1, name: "Driver (CEO)", type: "driver" },
+    { id: 2, name: "Creator (Researcher)", type: "creator" },
+    { id: 3, name: "Generator (HR)", type: "generator" },
   ];
 
   return (
@@ -133,4 +141,5 @@ export const ChatDemo: React.FC = () => {
 };
 
 export default ChatDemo;
+
 
