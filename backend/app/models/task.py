@@ -36,3 +36,4 @@ class Task(db.Model):
             ),
         }
 
+

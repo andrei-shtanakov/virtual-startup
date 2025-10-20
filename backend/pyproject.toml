@@ -16,6 +16,8 @@ dependencies = [
     "python-socketio>=5.14.2",
     "openai>=2.3.0",
     "tiktoken>=0.12.0",
+    "simple-websocket>=1.1.0",
+    "eventlet>=0.40.3",
 ]
 
 [dependency-groups]

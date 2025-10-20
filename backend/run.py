@@ -1,5 +1,8 @@
 """Run the Flask application."""
 
+import eventlet
+eventlet.monkey_patch()
+
 import asyncio
 import os
 from app import create_app, socketio
@@ -34,10 +37,19 @@ if __name__ == "__main__":
         initialize_agents()
 
     print("\n🚀 Starting server on http://localhost:5000")
+    print("📡 WebSocket support enabled")
 
     # Disable Flask's reloader in debug mode to prevent WebSocket handler issues
     # The reloader creates a child process which doesn't properly re-register Socket.IO handlers
     use_reloader = os.environ.get('FLASK_USE_RELOADER', 'false').lower() == 'true'
 
-    socketio.run(app, debug=True, host="0.0.0.0", port=5000, allow_unsafe_werkzeug=True, use_reloader=use_reloader)
+    socketio.run(
+        app,
+        debug=True,
+        host="0.0.0.0",
+        port=5000,
+        use_reloader=use_reloader,
+        log_output=True
+    )
+
 

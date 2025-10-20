@@ -27,6 +27,33 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = React.useState(false);
+
+  // Handle message reaction
+  const handleReaction = (messageId: number, emoji: string) => {
+    console.log(`Reaction added to message ${messageId}: ${emoji}`);
+    // In a real app, you would send this to the backend
+    // For now, just log it
+  };
+
+  // Handle message copy
+  const handleCopy = (content: string) => {
+    console.log("Message copied:", content.substring(0, 50) + "...");
+  };
+
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Check scroll position to show/hide "Jump to bottom" button
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom && messages.length > 0);
+    }
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -56,67 +83,61 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     switch (agentStatus) {
       case "working":
         return (
-          <span className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
-            <span className="animate-pulse">●</span> Working
+          <span className="flex items-center gap-1.5 text-primary">
+            <span className="animate-pulse text-xs">●</span>
+            <span className="text-xs">Working</span>
           </span>
         );
       case "waiting":
         return (
-          <span className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-            <span>●</span> Waiting
+          <span className="flex items-center gap-1.5 text-chart-2">
+            <span className="text-xs">●</span>
+            <span className="text-xs">Waiting</span>
           </span>
         );
       case "idle":
       default:
         return (
-          <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
-            <span>●</span> Idle
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="text-xs">●</span>
+            <span className="text-xs">Idle</span>
           </span>
         );
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-background border border-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-100 dark:bg-gray-900 px-4 py-3 border-b border-gray-300 dark:border-gray-700">
+      <div className="px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Agent type badge */}
-            <span
-              className={`${getAgentTypeColor()} text-white text-xs font-bold px-2 py-1 rounded uppercase`}
-            >
-              {agentType}
-            </span>
-
-            {/* Agent name */}
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {/* Agent info */}
+            <h3 className="text-sm font-semibold text-foreground">
               {agentName}
             </h3>
+            <span className="text-xs font-mono text-muted-foreground uppercase">
+              {agentType}
+            </span>
           </div>
 
           {/* Status indicator */}
-          <div className="text-sm font-medium">{getStatusIndicator()}</div>
-        </div>
-
-        {/* Agent ID */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Agent ID: {agentId}
+          <div className="text-xs font-medium">{getStatusIndicator()}</div>
         </div>
       </div>
 
       {/* Messages area */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2"
+        className="flex-1 overflow-y-auto relative bg-background"
         style={{ minHeight: "200px" }}
+        onScroll={handleScroll}
       >
         {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-            <div className="text-center">
-              <p className="text-lg mb-2">💬</p>
-              <p>No messages yet</p>
-              <p className="text-sm mt-1">
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <div className="text-center space-y-2">
+              <p className="text-sm">No messages yet</p>
+              <p className="text-xs">
                 Start a conversation with {agentName}
               </p>
             </div>
@@ -128,22 +149,29 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 key={msg.id}
                 message={msg}
                 agentName={agentName}
+                onReaction={handleReaction}
+                onCopy={handleCopy}
               />
             ))}
 
             {/* Loading indicator */}
             {isLoading && (
-              <div className="flex justify-start mb-4">
-                <div className="bg-gray-200 dark:bg-gray-700 rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+              <div className="py-4 px-4 bg-accent/10">
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-sm bg-background border border-border flex items-center justify-center text-xs font-mono font-semibold">
+                      A
                     </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                      {agentName} is thinking...
-                    </span>
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Thinking...
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -152,6 +180,29 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             {/* Scroll anchor */}
             <div ref={messagesEndRef} />
           </>
+        )}
+
+        {/* Jump to bottom button */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-4 right-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2 shadow-lg transition-all hover:scale-105 z-10"
+            title="Jump to bottom"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+          </button>
         )}
       </div>
 

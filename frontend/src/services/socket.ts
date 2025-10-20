@@ -37,6 +37,10 @@ socket.on("connect", () => {
   notifyConnectionChange(true);
 });
 
+socket.on("connection_response", (data) => {
+  console.log("📨 Received connection_response:", data);
+});
+
 socket.on("disconnect", (reason) => {
   console.log("❌ Socket disconnected:", reason);
   notifyConnectionChange(false);
@@ -49,9 +53,15 @@ socket.on("disconnect", (reason) => {
 });
 
 socket.on("connect_error", (error) => {
-  console.error("⚠️ Socket connection error:", error.message);
+  console.error("⚠️ Socket connection error:", error);
+  console.error("Error details:", {
+    message: error.message,
+    type: error.type,
+    description: error.description,
+    context: error.context,
+  });
   reconnectAttempt++;
-  
+
   if (reconnectAttempt >= RECONNECTION_ATTEMPTS) {
     console.error("❌ Max reconnection attempts reached");
   }

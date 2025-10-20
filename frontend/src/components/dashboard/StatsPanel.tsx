@@ -1,4 +1,8 @@
 import React from "react";
+import { motion } from "framer-motion";
+import { BarChart3, Activity } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import type { Agent } from "../../types/agent";
 import AgentList from "./AgentList";
 import WorkflowStatus from "./WorkflowStatus";
@@ -22,104 +26,107 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
   const activeAgents = agents.filter((a) => a.status === "working").length;
   const idleAgents = agents.filter((a) => a.status === "idle").length;
 
-  // Get system status color
-  const getStatusColor = () => {
-    switch (systemStatus) {
-      case "operational":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "degraded":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "down":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-      {/* Header */}
-      <div className="bg-gray-100 dark:bg-gray-900 px-4 py-3 border-b border-gray-300 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          📊 System Overview
-        </h3>
-      </div>
-
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* System Status */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            System Status
-          </h4>
-          <div
-            className={`${getStatusColor()} px-3 py-2 rounded-lg text-center font-medium flex items-center justify-center gap-2`}
-          >
-            <span className={systemStatus === "operational" ? "text-green-600 dark:text-green-400" : ""}>
-              {systemStatus === "operational" ? "●" : "○"}
-            </span>
-            <span className="capitalize">{systemStatus}</span>
-          </div>
-        </div>
-
-        {/* Agent Statistics */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Agent Statistics
-          </h4>
-          <div className="grid grid-cols-3 gap-2">
-            {/* Total */}
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
-              <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                {totalAgents}
-              </div>
-              <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                Total
-              </div>
+    <div className="flex flex-col h-full space-y-4">
+      {/* System Status Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              System Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className={`h-2.5 w-2.5 rounded-full ${
+                systemStatus === "operational"
+                  ? "bg-emerald-500"
+                  : systemStatus === "degraded"
+                  ? "bg-yellow-500"
+                  : "bg-red-500"
+              }`} />
+              <p className="text-lg font-semibold capitalize">{systemStatus}</p>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">Uptime: 99.98%</p>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-            {/* Active */}
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-center">
-              <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
-                {activeAgents}
-              </div>
-              <div className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                Active
-              </div>
+      {/* Agent Statistics Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Agent Statistics
+            </CardTitle>
+          </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <div className="px-2 text-center">
+              <p className="text-2xl font-bold">{totalAgents}</p>
+              <p className="text-xs text-muted-foreground">Total</p>
             </div>
-
-            {/* Idle */}
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 text-center">
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                {idleAgents}
-              </div>
-              <div className="text-xs text-green-700 dark:text-green-300 mt-1">
-                Idle
-              </div>
+            <div className="px-2 text-center">
+              <p className="text-2xl font-bold">{activeAgents}</p>
+              <p className="text-xs text-muted-foreground">Active</p>
+            </div>
+            <div className="px-2 text-center">
+              <p className="text-2xl font-bold">{idleAgents}</p>
+              <p className="text-xs text-muted-foreground">Idle</p>
             </div>
           </div>
-        </div>
 
-        {/* Workflow Status */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Workflows
-          </h4>
-          <WorkflowStatus
-            activeWorkflows={0}
-            completedWorkflows={0}
-            currentTask={undefined}
-          />
-        </div>
+            {totalAgents > 0 && (
+              <div className="mt-4">
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span>Idle percentage</span>
+                  <span className="tabular-nums">{Math.round((idleAgents / totalAgents) * 100)}%</span>
+                </div>
+                <Progress value={(idleAgents / totalAgents) * 100} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
-        {/* Agent List */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            All Agents ({agents.length})
-          </h4>
-          <AgentList agents={agents} loading={agentsLoading} />
-        </div>
-      </div>
+      {/* Workflow Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
+        <WorkflowStatus
+          activeWorkflows={0}
+          completedWorkflows={0}
+          currentTask={undefined}
+        />
+      </motion.div>
+
+      {/* Agent List */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>All Agents ({agents.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AgentList agents={agents} loading={agentsLoading} />
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };

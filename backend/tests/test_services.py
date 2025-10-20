@@ -77,20 +77,137 @@ class TestRAGService:
             service2 = get_rag_service()
             assert service1 is service2
 
-    @pytest.mark.skip(reason="RAG service requires complex initialization")
-    def test_rag_add_document(self, app):
-        """Test adding a document to RAG."""
-        pass
+    def test_rag_add_documents(self, app):
+        """Test adding documents to RAG."""
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
 
-    @pytest.mark.skip(reason="RAG service requires complex initialization")
+            service = get_rag_service()
+
+            # Mock the collection
+            service.collection = MagicMock()
+            service.collection.add = MagicMock()
+
+            # Add documents
+            docs = ["Document 1", "Document 2"]
+            metadatas = [{"source": "test1"}, {"source": "test2"}]
+
+            service.add_documents(documents=docs, metadatas=metadatas)
+
+            # Verify collection.add was called
+            service.collection.add.assert_called_once()
+            call_args = service.collection.add.call_args
+            assert len(call_args.kwargs["documents"]) == 2
+            assert len(call_args.kwargs["metadatas"]) == 2
+
     def test_rag_search(self, app):
         """Test searching RAG knowledge base."""
-        pass
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
 
-    @pytest.mark.skip(reason="RAG service requires complex initialization")
-    def test_rag_clear(self, app):
-        """Test clearing RAG knowledge base."""
-        pass
+            service = get_rag_service()
+
+            # Mock the collection.query method
+            service.collection.query = MagicMock(
+                return_value={
+                    "documents": [["Test document 1", "Test document 2"]],
+                    "metadatas": [[{"source": "test1"}, {"source": "test2"}]],
+                    "distances": [[0.1, 0.2]],
+                    "ids": [["id1", "id2"]],
+                }
+            )
+
+            # Search
+            results = service.search("test query", k=2)
+
+            # Verify results
+            assert len(results) == 2
+            assert results[0]["document"] == "Test document 1"
+            assert results[0]["metadata"]["source"] == "test1"
+            assert results[0]["distance"] == 0.1
+            assert results[1]["document"] == "Test document 2"
+
+    def test_rag_get_relevant_context(self, app):
+        """Test getting relevant context as string."""
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
+
+            service = get_rag_service()
+
+            # Mock the search method
+            service.search = MagicMock(
+                return_value=[
+                    {"document": "Context 1", "metadata": {}, "distance": 0.1},
+                    {"document": "Context 2", "metadata": {}, "distance": 0.2},
+                ]
+            )
+
+            # Get context
+            context = service.get_relevant_context("test query", k=2)
+
+            # Verify context
+            assert "Context 1" in context
+            assert "Context 2" in context
+            assert "---" in context  # Separator
+
+    def test_rag_count_documents(self, app):
+        """Test counting documents in RAG."""
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
+
+            service = get_rag_service()
+
+            # Mock count
+            service.collection.count = MagicMock(return_value=10)
+
+            # Count
+            count = service.count_documents()
+            assert count == 10
+
+    def test_rag_delete_documents(self, app):
+        """Test deleting documents from RAG."""
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
+
+            service = get_rag_service()
+
+            # Mock delete
+            service.collection.delete = MagicMock()
+
+            # Delete
+            service.delete_documents(["id1", "id2"])
+
+            # Verify delete was called
+            service.collection.delete.assert_called_once_with(ids=["id1", "id2"])
+
+    def test_rag_update_document(self, app):
+        """Test updating a document in RAG."""
+        with app.app_context():
+            from app.services import get_rag_service
+            from unittest.mock import MagicMock
+
+            service = get_rag_service()
+
+            # Mock update
+            service.collection.update = MagicMock()
+
+            # Update document
+            service.update_document(
+                id="id1",
+                document="Updated document",
+                metadata={"source": "updated"}
+            )
+
+            # Verify update was called
+            service.collection.update.assert_called_once()
+            call_args = service.collection.update.call_args
+            assert call_args.kwargs["ids"] == ["id1"]
+            assert call_args.kwargs["documents"] == ["Updated document"]
 
 
 class TestAgentService:
@@ -105,10 +222,46 @@ class TestAgentService:
             service2 = get_agent_service()
             assert service1 is service2
 
-    @pytest.mark.skip(reason="Agent service requires initialization")
-    def test_get_agent_status(self, app, db_session, sample_agent):
-        """Test getting agent status."""
-        pass
+    def test_agent_service_initialization_status(self, app):
+        """Test agent service initialization status."""
+        with app.app_context():
+            from app.services import get_agent_service
+
+            service = get_agent_service()
+
+            # Initially not initialized
+            assert service.initialized is False
+
+            # Calling ensure_initialized should raise error
+            with pytest.raises(RuntimeError, match="Agent system not initialized"):
+                service.ensure_initialized()
+
+    def test_get_all_agents_not_initialized(self, app, db_session, sample_agent):
+        """Test getting all agents when system not initialized."""
+        with app.app_context():
+            from app.services import get_agent_service
+
+            service = get_agent_service()
+
+            # Should return from database when not initialized
+            agents = service.get_all_agents()
+            assert len(agents) >= 1
+            assert any(a["name"] == "Test Agent" for a in agents)
+
+    def test_get_conversation_history(self, app, db_session, sample_agent, sample_message):
+        """Test getting conversation history."""
+        with app.app_context():
+            from app.services import get_agent_service
+
+            service = get_agent_service()
+
+            # Get conversation history
+            history = service.get_agent_conversation_history(sample_agent.id, limit=10)
+
+            # Verify history
+            assert len(history) >= 1
+            assert history[0]["content"] == "Test message"
+            assert history[0]["sender"] == "user"
 
 
 class TestTaskProcessor:

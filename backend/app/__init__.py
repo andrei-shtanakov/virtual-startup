@@ -10,7 +10,12 @@ from flask_sqlalchemy import SQLAlchemy
 # Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+    logger=False,
+    engineio_logger=False
+)
 
 
 def create_app(config_name: str = "development") -> Flask:

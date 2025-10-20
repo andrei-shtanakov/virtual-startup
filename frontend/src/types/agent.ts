@@ -10,6 +10,7 @@ export interface Agent {
   status: AgentStatus;
   config?: Record<string, unknown>;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Message {

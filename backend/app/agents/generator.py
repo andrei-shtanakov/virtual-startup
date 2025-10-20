@@ -248,3 +248,4 @@ class GeneratorAgent(BaseVirtualAgent):
 
         return True
 
+
