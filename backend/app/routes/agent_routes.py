@@ -1,10 +1,10 @@
 """Agent API routes."""
 
-import asyncio
 from flask import Blueprint, jsonify, request
 
 from app.models import Agent
 from app.services import get_agent_service
+from app.utils.async_runner import run_async
 
 bp = Blueprint("agents", __name__, url_prefix="/api/agents")
 
@@ -61,13 +61,9 @@ def send_message_to_agent(agent_id: int) -> tuple[dict, int]:
     agent_service = get_agent_service()
 
     try:
-        # Process message with agent system (async)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
-            agent_service.send_message_to_agent(agent.id, data["message"])
+        result = run_async(
+            agent_service.send_message_to_agent, agent.id, data["message"]
         )
-        loop.close()
 
         if result.get("success"):
             return (
@@ -103,13 +99,11 @@ def send_task_to_driver() -> tuple[dict, int]:
     agent_service = get_agent_service()
 
     try:
-        # Process task with Driver agent (async)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
-            agent_service.process_operator_task(data["task"], data.get("workflow_id"))
+        result = run_async(
+            agent_service.process_operator_task,
+            data["task"],
+            data.get("workflow_id"),
         )
-        loop.close()
 
         if result.get("success"):
             return jsonify(result), 200
@@ -137,15 +131,12 @@ def create_dynamic_agent() -> tuple[dict, int]:
     agent_service = get_agent_service()
 
     try:
-        # Create agent (async)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(
-            agent_service.create_dynamic_agent(
-                data["role"], data["capabilities"], data["reason"]
-            )
+        result = run_async(
+            agent_service.create_dynamic_agent,
+            data["role"],
+            data["capabilities"],
+            data["reason"],
         )
-        loop.close()
 
         if result.get("success"):
             return jsonify(result), 201

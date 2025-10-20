@@ -205,6 +205,7 @@ class AgentService:
             )
 
             if new_agent:
+                agent_manager.dynamic_agents[new_agent.name] = new_agent
                 return {
                     "success": True,
                     "agent": new_agent.to_dict(),
@@ -233,5 +234,4 @@ def get_agent_service() -> AgentService:
         _agent_service = AgentService()
 
     return _agent_service
-
 

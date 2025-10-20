@@ -1,21 +1,16 @@
 """Flask application factory."""
 
-import asyncio
 from flask import Flask, jsonify
-from flask_cors import CORS
 from flask_migrate import Migrate
-from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO
+
+from app.utils.async_runner import run_async
 
 # Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
-socketio = SocketIO(
-    cors_allowed_origins="*",
-    async_mode="eventlet",
-    logger=False,
-    engineio_logger=False
-)
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(config_name: str = "development") -> Flask:
@@ -40,16 +35,6 @@ def create_app(config_name: str = "development") -> Flask:
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
-
-    # Initialize Socket.IO first
-    socketio.init_app(app)
-
-    # Then register socket handlers AFTER Socket.IO is initialized with the app
-    # This ensures the decorators have access to the fully configured socketio instance
-    from app.sockets import register_socketio_handlers
-
-    register_socketio_handlers()
 
     # Register blueprints
     from app.routes import agent_routes, workflow_routes, stats_routes
@@ -74,11 +59,7 @@ def create_app(config_name: str = "development") -> Flask:
             return jsonify({"status": "already_initialized"}), 200
 
         try:
-            # Initialize agent system (async)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            status = loop.run_until_complete(agent_service.initialize())
-            loop.close()
+            status = run_async(agent_service.initialize)
 
             if "error" in status:
                 return jsonify(status), 500
@@ -108,5 +89,14 @@ def create_app(config_name: str = "development") -> Flask:
                 "database": "connected",
             }
         ), 200
+
+    socketio.init_app(
+        app,
+        cors_allowed_origins=app.config.get("SOCKETIO_CORS_ALLOWED_ORIGINS", "*"),
+    )
+
+    from app.sockets import init_socketio
+
+    init_socketio(socketio)
 
     return app

@@ -2,11 +2,13 @@
 
 import asyncio
 from datetime import datetime
-from textwrap import fill
+from textwrap import wrap
+from typing import Iterable
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import Header, Footer, DataTable, Log, Input, Static
 from textual.binding import Binding
+from textual.events import Resize
 import requests
 
 API_URL = "http://localhost:5000/api"
@@ -15,14 +17,18 @@ API_URL = "http://localhost:5000/api"
 class AgentTable(DataTable):
     """Table showing agent status."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.last_agents: list[dict] = []
+
     def on_mount(self) -> None:
         """Setup table columns when mounted."""
         self.add_columns("ID", "Name", "Role", "Status")
         self.cursor_type = "row"
-        self.refresh_agents()
 
-    def refresh_agents(self) -> None:
+    def refresh_agents(self) -> list[dict]:
         """Fetch and display agents from API."""
+        agents: list[dict] = []
         try:
             response = requests.get(f"{API_URL}/agents", timeout=2)
             if response.ok:
@@ -33,47 +39,90 @@ class AgentTable(DataTable):
                         str(agent["id"]),
                         agent["name"],
                         agent["role"][:30],  # Truncate long roles
-                        agent["status"]
+                        agent["status"],
                     )
+                if agents:
+                    self.cursor_coordinate = (0, 0)
         except Exception as e:
             self.clear()
             self.add_row("Error", str(e)[:20], "", "")
+            agents = []
+
+        self.last_agents = agents
+        return agents
 
 
-class ChatLog(Log):
+class PlainLog(Log):
+    """Log widget with newline-aware helpers."""
+
+    def write_line(self, text: str = "", *, scroll_end: bool | None = None) -> None:
+        """Write a line to the log ensuring it ends with a newline."""
+        super().write(f"{text}\n", scroll_end=scroll_end)
+
+    def write_lines(self, lines: Iterable[str], *, scroll_end: bool | None = None) -> None:
+        """Write multiple lines to the log."""
+        for line in lines:
+            self.write_line(line, scroll_end=scroll_end)
+
+
+class ChatLog(PlainLog):
     """Chat window for agent interactions."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.agent_id = 1  # Default to Driver
         self.max_width = 80  # Default width, will be updated on mount
 
     def on_mount(self) -> None:
         """Initialize chat log."""
-        # Calculate max width based on panel size
-        self.max_width = max(40, self.size.width - 4)  # Leave padding
-        self.write("Welcome to Virtual Startup Chat!")
-        self.write("Select an agent from the left and start typing...")
-        self.write("")  # Add spacing
+        self._update_max_width()
+        self.write_line("Welcome to Virtual Startup Chat!")
+        self.write_line("Select an agent from the left and start typing...")
+        self.write_line()  # Add spacing
+
+    def on_resize(self, event: Resize) -> None:
+        """Update wrapping width when the widget resizes."""
+        self._update_max_width(event.size.width)
+
+    def _update_max_width(self, width: int | None = None) -> None:
+        """Compute the available width for wrapping."""
+        current_width = width if width is not None else self.size.width
+        if current_width and current_width > 0:
+            self.max_width = max(20, current_width - 4)
 
     def write_wrapped(self, text: str) -> None:
         """Write text with proper wrapping."""
         if not text.strip():
-            self.write("")
+            self.write_line()
             return
 
-        # Wrap text to fit within the panel width
-        wrapped = fill(text, width=self.max_width, break_long_words=True, break_on_hyphens=True)
-        self.write(wrapped)
+        available_width = self.max_width
+
+        for paragraph in text.splitlines() or [""]:
+            if not paragraph.strip():
+                self.write_line()
+                continue
+
+            wrapped_lines = wrap(
+                paragraph,
+                width=available_width,
+                break_long_words=True,
+                break_on_hyphens=True,
+            )
+            if not wrapped_lines:
+                self.write_line()
+                continue
+
+            for line in wrapped_lines:
+                self.write_line(line)
 
 
-class CLILog(Log):
+class CLILog(PlainLog):
     """CLI command output window."""
 
     def on_mount(self) -> None:
         """Initialize CLI log."""
-        self.write("Virtual Startup CLI v1.0.0")
-        self.write("Type /help for available commands")
+        self.write_line("Virtual Startup CLI v1.0.0")
+        self.write_line("Type /help for available commands")
 
 
 class ChatInput(Input):
@@ -178,27 +227,31 @@ class VirtualStartupTUI(App):
 
     def on_mount(self) -> None:
         """Setup application state."""
-        self.selected_agent_id = 1
+        self.selected_agent_id: int | None = None
+        agent_table = self.query_one(AgentTable)
+        agents = agent_table.refresh_agents()
+        self._ensure_agent_selected(agents, initial=True)
         self.query_one(ChatInput).focus()
 
     def action_refresh(self) -> None:
         """Refresh agent list."""
         agent_table = self.query_one(AgentTable)
-        agent_table.refresh_agents()
+        agents = agent_table.refresh_agents()
+        self._ensure_agent_selected(agents)
         cli_log = self.query_one("#cli-log", CLILog)
-        cli_log.write(f"[{datetime.now().strftime('%H:%M:%S')}] Agents refreshed")
+        cli_log.write_line(f"[{datetime.now().strftime('%H:%M:%S')}] Agents refreshed")
 
     def action_clear_chat(self) -> None:
         """Clear chat log."""
         chat_log = self.query_one("#chat-log", ChatLog)
         chat_log.clear()
-        chat_log.write("Chat cleared")
+        chat_log.write_line("Chat cleared")
 
     def action_clear_cli(self) -> None:
         """Clear CLI log."""
         cli_log = self.query_one("#cli-log", CLILog)
         cli_log.clear()
-        cli_log.write("CLI cleared")
+        cli_log.write_line("CLI cleared")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle agent selection."""
@@ -206,13 +259,21 @@ class VirtualStartupTUI(App):
         table = event.data_table
         row_data = table.get_row(row_key)
 
-        self.selected_agent_id = int(row_data[0])
+        try:
+            self.selected_agent_id = int(row_data[0])
+        except (TypeError, ValueError):
+            self.selected_agent_id = None
+            chat_log = self.query_one("#chat-log", ChatLog)
+            chat_log.write_line()
+            chat_log.write_line("No valid agent selected.")
+            return
+
         agent_name = row_data[1]
 
         chat_log = self.query_one("#chat-log", ChatLog)
-        chat_log.write("")
-        chat_log.write(f"--- Switched to {agent_name} (ID: {self.selected_agent_id}) ---")
-        chat_log.write("")
+        chat_log.write_line()
+        chat_log.write_line(f"--- Switched to {agent_name} (ID: {self.selected_agent_id}) ---")
+        chat_log.write_line()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission."""
@@ -229,11 +290,15 @@ class VirtualStartupTUI(App):
             return
 
         chat_log = self.query_one("#chat-log", ChatLog)
+        if self.selected_agent_id is None:
+            chat_log.write_line()
+            chat_log.write_line("No agent is available. Initialize agents and refresh.")
+            return
         timestamp = datetime.now().strftime("%H:%M:%S")
 
         # Write user message - each on a new line with wrapping
-        chat_log.write("")  # Blank line before message
-        chat_log.write(f"[{timestamp}] You:")
+        chat_log.write_line()  # Blank line before message
+        chat_log.write_line(f"[{timestamp}] You:")
         chat_log.write_wrapped(message)
 
         try:
@@ -249,15 +314,15 @@ class VirtualStartupTUI(App):
                 data = response.json()
                 response_text = data.get("response", "No response")
                 # Write agent response - each on a new line with wrapping
-                chat_log.write("")  # Blank line before message
-                chat_log.write(f"[{timestamp}] Agent:")
+                chat_log.write_line()  # Blank line before message
+                chat_log.write_line(f"[{timestamp}] Agent:")
                 chat_log.write_wrapped(response_text)
             else:
-                chat_log.write("")
-                chat_log.write(f"[{timestamp}] Error: {response.status_code}")
+                chat_log.write_line()
+                chat_log.write_line(f"[{timestamp}] Error: {response.status_code}")
         except Exception as e:
-            chat_log.write("")
-            chat_log.write(f"[{timestamp}] Error: {str(e)}")
+            chat_log.write_line()
+            chat_log.write_line(f"[{timestamp}] Error: {str(e)}")
 
     async def handle_cli_command(self, command: str) -> None:
         """Execute CLI command."""
@@ -267,16 +332,16 @@ class VirtualStartupTUI(App):
         cli_log = self.query_one("#cli-log", CLILog)
         timestamp = datetime.now().strftime("%H:%M:%S")
 
-        cli_log.write(f"[{timestamp}] $ {command}")
+        cli_log.write_line(f"[{timestamp}] $ {command}")
 
         cmd = command.strip().lower()
 
         if cmd in ["/help", "/?", "/h"]:
-            cli_log.write("Available commands:")
-            cli_log.write("  /status    - Show system status")
-            cli_log.write("  /agents    - List all agents")
-            cli_log.write("  /clear     - Clear CLI output")
-            cli_log.write("  /help      - Show this help")
+            cli_log.write_line("Available commands:")
+            cli_log.write_line("  /status    - Show system status")
+            cli_log.write_line("  /agents    - List all agents")
+            cli_log.write_line("  /clear     - Clear CLI output")
+            cli_log.write_line("  /help      - Show this help")
 
         elif cmd == "/status":
             try:
@@ -287,13 +352,13 @@ class VirtualStartupTUI(App):
                 )
                 if response.ok:
                     data = response.json()
-                    cli_log.write(f"  API: {data.get('api', 'unknown')}")
-                    cli_log.write(f"  Agents: {data.get('agents_initialized', False)}")
-                    cli_log.write(f"  Database: {data.get('database', 'unknown')}")
+                    cli_log.write_line(f"  API: {data.get('api', 'unknown')}")
+                    cli_log.write_line(f"  Agents: {data.get('agents_initialized', False)}")
+                    cli_log.write_line(f"  Database: {data.get('database', 'unknown')}")
                 else:
-                    cli_log.write(f"  Error: {response.status_code}")
+                    cli_log.write_line(f"  Error: {response.status_code}")
             except Exception as e:
-                cli_log.write(f"  Error: {str(e)}")
+                cli_log.write_line(f"  Error: {str(e)}")
 
         elif cmd == "/agents":
             try:
@@ -304,21 +369,42 @@ class VirtualStartupTUI(App):
                 )
                 if response.ok:
                     agents = response.json()
-                    cli_log.write(f"Found {len(agents)} agent(s):")
+                    cli_log.write_line(f"Found {len(agents)} agent(s):")
                     for agent in agents:
-                        cli_log.write(f"  [{agent['id']}] {agent['name']} - {agent['status']}")
+                        cli_log.write_line(f"  [{agent['id']}] {agent['name']} - {agent['status']}")
                 else:
-                    cli_log.write(f"  Error: {response.status_code}")
+                    cli_log.write_line(f"  Error: {response.status_code}")
             except Exception as e:
-                cli_log.write(f"  Error: {str(e)}")
+                cli_log.write_line(f"  Error: {str(e)}")
 
         elif cmd == "/clear":
             cli_log.clear()
-            cli_log.write("CLI cleared")
+            cli_log.write_line("CLI cleared")
 
         else:
-            cli_log.write(f"  Unknown command: {command}")
-            cli_log.write("  Type /help for available commands")
+            cli_log.write_line(f"  Unknown command: {command}")
+            cli_log.write_line("  Type /help for available commands")
+
+    def _ensure_agent_selected(
+        self, agents: list[dict], initial: bool = False
+    ) -> None:
+        """Select the first available agent if none is chosen."""
+        chat_log = self.query_one("#chat-log", ChatLog)
+
+        if not agents:
+            self.selected_agent_id = None
+            if initial:
+                chat_log.write_line("No agents available yet. Run /api/init when ready.")
+            return
+
+        current_ids = {agent["id"] for agent in agents}
+
+        if self.selected_agent_id not in current_ids:
+            self.selected_agent_id = agents[0]["id"]
+            chat_log.write_line()
+            chat_log.write_line(
+                f"Defaulting to {agents[0]['name']} (ID: {self.selected_agent_id})."
+            )
 
 
 def main():

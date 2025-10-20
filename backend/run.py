@@ -1,11 +1,37 @@
 """Run the Flask application."""
 
-import eventlet
-eventlet.monkey_patch()
+import errno
 
-import asyncio
-import os
-from app import create_app, socketio
+from werkzeug.serving import WSGIRequestHandler
+
+from app import create_app
+from app.utils.async_runner import run_async
+
+
+_DISCONNECTED_ERRNOS = {
+    error
+    for error in [
+        errno.EBADF,
+        getattr(errno, "ENOTCONN", None),
+        getattr(errno, "ECONNRESET", None),
+        getattr(errno, "EPIPE", None),
+    ]
+    if error is not None
+}
+
+
+class PatchedWSGIRequestHandler(WSGIRequestHandler):
+    """Treat common disconnect errors from dropped clients as benign."""
+
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except OSError as exc:
+            if getattr(exc, "errno", None) in _DISCONNECTED_ERRNOS:
+                self.connection_dropped(exc)
+                return
+            raise
+
 
 app = create_app()
 
@@ -18,10 +44,7 @@ def initialize_agents():
     if not agent_service.initialized:
         print("Initializing agent system...")
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            status = loop.run_until_complete(agent_service.initialize())
-            loop.close()
+            status = run_async(agent_service.initialize)
 
             if "error" in status:
                 print(f"❌ Agent initialization failed: {status.get('error')}")
@@ -36,20 +59,12 @@ if __name__ == "__main__":
     with app.app_context():
         initialize_agents()
 
-    print("\n🚀 Starting server on http://localhost:5000")
-    print("📡 WebSocket support enabled")
+    print("\n🚀 Starting API server on http://localhost:5000")
+    print("💻 TUI interface available via: uv run python tui_app.py")
 
-    # Disable Flask's reloader in debug mode to prevent WebSocket handler issues
-    # The reloader creates a child process which doesn't properly re-register Socket.IO handlers
-    use_reloader = os.environ.get('FLASK_USE_RELOADER', 'false').lower() == 'true'
-
-    socketio.run(
-        app,
+    app.run(
         debug=True,
         host="0.0.0.0",
         port=5000,
-        use_reloader=use_reloader,
-        log_output=True
+        request_handler=PatchedWSGIRequestHandler,
     )
-
-

@@ -41,11 +41,13 @@ class TestEdgeCases:
         assert workflow.id is not None
         assert workflow.description is None
 
-    def test_task_completion_timestamp(self, db_session, sample_workflow):
+    def test_task_completion_timestamp(
+        self, db_session, sample_workflow, sample_agent
+    ):
         """Test task completion updates timestamp."""
         task = Task(
             workflow_id=sample_workflow.id,
-            assigned_to="test",
+            assigned_to=sample_agent.id,
             status="pending",
             description="Test",
         )
@@ -215,4 +217,3 @@ class TestConcurrency:
 
         # All should be associated with agent
         assert len(sample_agent.messages) >= 20
-

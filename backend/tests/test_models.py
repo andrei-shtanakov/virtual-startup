@@ -117,11 +117,13 @@ class TestWorkflowModel:
         assert data["status"] == sample_workflow.status
         assert "started_at" in data
 
-    def test_workflow_relationships(self, db_session, sample_workflow):
+    def test_workflow_relationships(
+        self, db_session, sample_workflow, sample_agent
+    ):
         """Test workflow relationships with tasks."""
         task = Task(
             workflow_id=sample_workflow.id,
-            assigned_to="test",
+            assigned_to=sample_agent.id,
             status="pending",
             description="Test task",
         )
@@ -135,11 +137,11 @@ class TestWorkflowModel:
 class TestTaskModel:
     """Tests for Task model."""
 
-    def test_create_task(self, db_session, sample_workflow):
+    def test_create_task(self, db_session, sample_workflow, sample_agent):
         """Test creating a task."""
         task = Task(
             workflow_id=sample_workflow.id,
-            assigned_to="driver",
+            assigned_to=sample_agent.id,
             status="pending",
             description="Test the system",
         )
@@ -148,7 +150,7 @@ class TestTaskModel:
 
         assert task.id is not None
         assert task.workflow_id == sample_workflow.id
-        assert task.assigned_to == "driver"
+        assert task.assigned_to == sample_agent.id
         assert task.status == "pending"
         assert task.description == "Test the system"
         assert isinstance(task.created_at, datetime)
@@ -163,6 +165,5 @@ class TestTaskModel:
         assert data["status"] == sample_task.status
         assert data["description"] == sample_task.description
         assert "created_at" in data
-
 
 

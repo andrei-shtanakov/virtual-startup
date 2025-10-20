@@ -4,6 +4,7 @@ The Creator agent handles research, ideation, and creative problem-solving
 using RAG, web search, and other tools.
 """
 
+import asyncio
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 from autogen_ext.models.openai import OpenAIChatCompletionClient
@@ -74,7 +75,9 @@ class CreatorAgent(BaseVirtualAgent):
         # Use RAG if available
         if use_rag and self.rag_service:
             try:
-                rag_results = await self.rag_service.search(topic, k=5)
+                rag_results = await asyncio.to_thread(
+                    self.rag_service.search, topic, 5
+                )
                 results["sources"].extend(
                     [{"type": "rag", "content": r} for r in rag_results]
                 )
@@ -169,5 +172,4 @@ class CreatorAgent(BaseVirtualAgent):
         self.log_message(
             content="Research cache cleared", sender=self.name, meta={"type": "system"}
         )
-
 

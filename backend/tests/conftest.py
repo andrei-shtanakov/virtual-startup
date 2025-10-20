@@ -89,11 +89,11 @@ def sample_workflow(db_session):
 
 
 @pytest.fixture(scope="function")
-def sample_task(db_session, sample_workflow):
+def sample_task(db_session, sample_workflow, sample_agent):
     """Create a sample task for testing."""
     task = Task(
         workflow_id=sample_workflow.id,
-        assigned_to="test",
+        assigned_to=sample_agent.id,
         status="pending",
         description="Test task",
     )
@@ -113,4 +113,3 @@ def sample_message(db_session, sample_agent):
     db_session.add(message)
     db_session.commit()
     return message
-

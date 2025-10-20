@@ -1,6 +1,14 @@
-"""WebSocket handlers package."""
+"""Socket.IO event registration."""
+
+from __future__ import annotations
+
+from flask_socketio import SocketIO
+
+from .chat_socket import register_chat_events
+
+__all__ = ["init_socketio"]
 
 
-def register_socketio_handlers() -> None:
-    """Ensure Socket.IO event handlers are imported and registered."""
-    import app.sockets.chat_socket  # noqa: F401
+def init_socketio(socketio: SocketIO) -> None:
+    """Register all Socket.IO event handlers."""
+    register_chat_events(socketio)

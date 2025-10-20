@@ -139,7 +139,7 @@ class TestWorkflowExecution:
 
     def test_workflow_lifecycle(self, client, db_session):
         """Test complete workflow lifecycle."""
-        from app.models import Workflow, Task
+        from app.models import Agent, Task, Workflow
 
         # Create workflow
         workflow = Workflow(
@@ -150,10 +150,19 @@ class TestWorkflowExecution:
         db_session.add(workflow)
         db_session.commit()
 
-        # Create task for workflow
+        # Create agent and task for workflow
+        agent = Agent(
+            name="Lifecycle Agent",
+            type="test_agent",
+            role="Tester",
+            status="idle",
+        )
+        db_session.add(agent)
+        db_session.commit()
+
         task = Task(
             workflow_id=workflow.id,
-            assigned_to="test_agent",
+            assigned_to=agent.id,
             description="Test task",
             status="pending",
         )
@@ -364,7 +373,7 @@ class TestDatabasePersistence:
 
     def test_workflow_task_relationships(self, client, db_session):
         """Test workflow-task relationships persist correctly."""
-        from app.models import Workflow, Task
+        from app.models import Agent, Task, Workflow
 
         # Create workflow with tasks
         workflow = Workflow(
@@ -375,16 +384,26 @@ class TestDatabasePersistence:
         db_session.add(workflow)
         db_session.commit()
 
-        tasks = [
-            Task(
-                workflow_id=workflow.id,
-                assigned_to=f"agent_{i}",
-                description=f"Task {i}",
-                status="pending",
+        agents = [
+            Agent(
+                name=f"Agent {i}",
+                type=f"agent_{i}",
+                role="Tester",
+                status="idle",
             )
             for i in range(3)
         ]
-        for task in tasks:
+        for agent in agents:
+            db_session.add(agent)
+        db_session.commit()
+
+        for index, agent in enumerate(agents):
+            task = Task(
+                workflow_id=workflow.id,
+                assigned_to=agent.id,
+                description=f"Task {index}",
+                status="pending",
+            )
             db_session.add(task)
         db_session.commit()
 

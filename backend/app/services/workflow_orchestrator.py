@@ -13,12 +13,12 @@ Manages end-to-end workflows where agents collaborate:
 """
 
 from datetime import datetime
-from typing import Dict, Any, Optional, List
-from flask_socketio import emit
-from app import db, socketio
-from app.models import Workflow, Task, Agent, Message
+from typing import Any, Dict, Optional
+
+from app import db
+from app.models import Agent, Message, Task, Workflow
 from app.services.agent_service import get_agent_service
-import json
+from app.utils.async_runner import run_async
 
 
 class WorkflowOrchestrator:
@@ -53,9 +53,6 @@ class WorkflowOrchestrator:
         db.session.add(workflow)
         db.session.commit()
 
-        # Emit workflow created event
-        self._emit_workflow_update(workflow.id, "created")
-
         return workflow
 
     def start_workflow(self, workflow_id: int, initial_message: str) -> Dict[str, Any]:
@@ -89,17 +86,15 @@ class WorkflowOrchestrator:
         }
 
         # Create initial task
+        driver_id = self._resolve_agent_id("driver")
         task = Task(
             workflow_id=workflow_id,
-            assigned_to="driver",
+            assigned_to=driver_id,
             status="pending",
             description=initial_message,
         )
         db.session.add(task)
         db.session.commit()
-
-        # Emit workflow started
-        self._emit_workflow_update(workflow_id, "started")
 
         # Execute workflow
         try:
@@ -114,7 +109,6 @@ class WorkflowOrchestrator:
             workflow.status = "failed"
             workflow.completed_at = datetime.utcnow()
             db.session.commit()
-            self._emit_workflow_update(workflow_id, "failed")
             raise e
 
     def _execute_workflow_step(
@@ -130,7 +124,7 @@ class WorkflowOrchestrator:
         db.session.commit()
 
         # Get agent for this task
-        agent = Agent.query.filter_by(type=task.assigned_to).first()
+        agent = Agent.query.get(task.assigned_to)
         if not agent:
             raise ValueError(f"Agent {task.assigned_to} not found")
 
@@ -139,14 +133,23 @@ class WorkflowOrchestrator:
             self.active_workflows[workflow_id]["steps"].append(
                 {
                     "task_id": task_id,
-                    "agent": task.assigned_to,
+                    "agent": agent.type,
                     "message": message,
                     "timestamp": datetime.utcnow().isoformat(),
                 }
             )
 
         # Send message to agent (async)
-        response = self.agent_service.send_message(agent.id, message)
+        try:
+            response = run_async(
+                self.agent_service.send_message_to_agent, agent.id, message
+            )
+        except RuntimeError as exc:
+            raise RuntimeError(f"Agent service error: {exc}") from exc
+
+        if not response.get("success"):
+            error_message = response.get("error", "Unknown agent error")
+            raise RuntimeError(f"Agent execution failed: {error_message}")
 
         # Create message record
         msg = Message(
@@ -170,12 +173,9 @@ class WorkflowOrchestrator:
         task.completed_at = datetime.utcnow()
         db.session.commit()
 
-        # Emit task update
-        self._emit_task_update(task_id, "completed")
-
         return {
             "task_id": task_id,
-            "agent": task.assigned_to,
+            "agent": agent.type,
             "response": response.get("response"),
         }
 
@@ -193,8 +193,6 @@ class WorkflowOrchestrator:
         if workflow_id in self.active_workflows:
             del self.active_workflows[workflow_id]
 
-        self._emit_workflow_update(workflow_id, "completed")
-
     def fail_workflow(self, workflow_id: int, error: str) -> None:
         """Mark workflow as failed"""
         workflow = Workflow.query.get(workflow_id)
@@ -210,8 +208,6 @@ class WorkflowOrchestrator:
         if workflow_id in self.active_workflows:
             del self.active_workflows[workflow_id]
 
-        self._emit_workflow_update(workflow_id, "failed")
-
     def get_workflow_status(self, workflow_id: int) -> Dict[str, Any]:
         """Get current workflow status"""
         workflow = Workflow.query.get(workflow_id)
@@ -226,6 +222,13 @@ class WorkflowOrchestrator:
             "active": workflow_id in self.active_workflows,
             "context": self.active_workflows.get(workflow_id, {}),
         }
+
+    def _resolve_agent_id(self, agent_type: str) -> int:
+        """Resolve an agent type to its database identifier."""
+        agent = Agent.query.filter_by(type=agent_type).first()
+        if not agent:
+            raise ValueError(f"Agent type {agent_type} not found")
+        return agent.id
 
     def execute_complete_workflow(
         self, task_description: str
@@ -253,7 +256,7 @@ class WorkflowOrchestrator:
             # Step 1: Send to Driver
             driver_task = Task(
                 workflow_id=workflow.id,
-                assigned_to="driver",
+                assigned_to=self._resolve_agent_id("driver"),
                 status="pending",
                 description=f"Coordinate: {task_description}",
             )
@@ -267,7 +270,7 @@ class WorkflowOrchestrator:
             # Step 2: Driver delegates to Creator for research
             creator_task = Task(
                 workflow_id=workflow.id,
-                assigned_to="creator",
+                assigned_to=self._resolve_agent_id("creator"),
                 status="pending",
                 description=f"Research: {task_description}",
             )
@@ -283,7 +286,7 @@ class WorkflowOrchestrator:
             # Step 3: Request specialist from Generator
             generator_task = Task(
                 workflow_id=workflow.id,
-                assigned_to="generator",
+                assigned_to=self._resolve_agent_id("generator"),
                 status="pending",
                 description=f"Create specialist for: {task_description}",
             )
@@ -313,28 +316,6 @@ class WorkflowOrchestrator:
             self.fail_workflow(workflow.id, str(e))
             raise e
 
-    def _emit_workflow_update(self, workflow_id: int, event: str) -> None:
-        """Emit workflow update via WebSocket"""
-        workflow = Workflow.query.get(workflow_id)
-        if workflow:
-            socketio.emit(
-                "workflow_update",
-                {
-                    "workflow_id": workflow_id,
-                    "event": event,
-                    "workflow": workflow.to_dict(),
-                },
-            )
-
-    def _emit_task_update(self, task_id: int, event: str) -> None:
-        """Emit task update via WebSocket"""
-        task = Task.query.get(task_id)
-        if task:
-            socketio.emit(
-                "task_update",
-                {"task_id": task_id, "event": event, "task": task.to_dict()},
-            )
-
 
 # Singleton instance
 _orchestrator_instance: Optional[WorkflowOrchestrator] = None
@@ -346,6 +327,3 @@ def get_workflow_orchestrator() -> WorkflowOrchestrator:
     if _orchestrator_instance is None:
         _orchestrator_instance = WorkflowOrchestrator()
     return _orchestrator_instance
-
-
-

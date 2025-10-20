@@ -12,7 +12,9 @@ class Task(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     workflow_id = db.Column(db.Integer, db.ForeignKey("workflows.id"), nullable=False)
-    assigned_to = db.Column(db.Integer, db.ForeignKey("agents.id"), nullable=True)
+    assigned_to = db.Column(
+        db.Integer, db.ForeignKey("agents.id"), nullable=True
+    )  # References agents.id
     status = db.Column(
         db.String(50), default="pending"
     )  # 'pending', 'in_progress', 'completed', 'failed'
@@ -35,5 +37,3 @@ class Task(db.Model):
                 self.completed_at.isoformat() if self.completed_at else None
             ),
         }
-
-
